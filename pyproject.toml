@@ -33,7 +33,7 @@ Issues = "https://github.com/messa/pytest-twinport/issues"
 twinport = "pytest_twinport.plugin"
 
 [dependency-groups]
-dev = ["mypy", "pytest-xdist", "ruff"]
+dev = ["mypy>=1.0", "pytest-xdist>=3.0", "ruff>=0.8"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pytest_twinport"]
