@@ -10,7 +10,6 @@ normal use.
   `NoFreePortError`. Check how these errors map on Windows first.
 - Raise an error when a released lease is used in `with`. It now returns the
   port with no protection.
-- Reject an empty `port_range=()`, which silently uses the default range.
 - Add a way to use ephemeral ports on systems where that range covers nearly all
   ports, because nothing can be leased there.
 - Consider handing over the bound socket (`lease.socket`) for servers running in

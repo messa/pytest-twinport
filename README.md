@@ -229,7 +229,7 @@ These solve neighboring problems:
 
 ### Unreleased
 
-- Nothing yet.
+- An empty `port_range` raises `ValueError` instead of using the default range.
 
 ### 0.1.0 (2026-11-07)
 

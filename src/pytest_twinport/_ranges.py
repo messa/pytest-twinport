@@ -19,7 +19,9 @@ _LINUX_RESERVED_FILE = "/proc/sys/net/ipv4/ip_local_reserved_ports"
 
 def candidate_guards(port_range: tuple[int, int] | None = None) -> list[int]:
     """Return the even guard ports whose whole pair is allowed to be leased."""
-    low, high = port_range or _range_from_env() or DEFAULT_RANGE
+    if port_range is None:
+        port_range = _range_from_env() or DEFAULT_RANGE
+    low, high = port_range
     if not 1 <= low <= high <= 65535:
         raise ValueError(f"Invalid port range: {low}-{high}")
     excluded = _excluded_ports()

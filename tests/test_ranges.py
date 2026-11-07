@@ -44,6 +44,11 @@ def test_invalid_range_is_rejected(port_range):
         candidate_guards(port_range)
 
 
+def test_empty_range_is_rejected():
+    with raises(ValueError):
+        candidate_guards(())
+
+
 def test_range_from_environment(monkeypatch):
     monkeypatch.setenv("TWINPORT_RANGE", "20000-20003")
     assert candidate_guards() == [20000, 20002]
