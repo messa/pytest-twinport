@@ -46,7 +46,3 @@ normal use.
   change in the code.
 - Test the lowest supported pytest on the newest Python too.
 - Limit the `pypi` environment to `v*` tags, and check that the tag is on `main`.
-
-## Packaging
-
-- Add classifiers for the supported Python versions.
