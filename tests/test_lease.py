@@ -1,14 +1,22 @@
-import signal
 import socket
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
 from pytest_twinport import NoFreePortError, PortLease, lease_port
 
-HAS_IPV6_LOOPBACK = Path("/proc/net/if_inet6").exists()
+
+def has_ipv6_loopback() -> bool:
+    try:
+        with socket.socket(socket.AF_INET6) as sock:
+            sock.bind(("::1", 0))
+    except OSError:
+        return False
+    return True
+
+
+HAS_IPV6_LOOPBACK = has_ipv6_loopback()
 
 
 @pytest.fixture
@@ -177,7 +185,7 @@ def test_guard_is_released_when_the_process_is_killed(pair):
     assert child.stdout.readline().strip() == "leased"
     with pytest.raises(NoFreePortError):
         lease_port(port_range=pair)
-    child.send_signal(signal.SIGKILL)
+    child.kill()
     child.communicate()
     lease_port(port_range=pair).release()
 

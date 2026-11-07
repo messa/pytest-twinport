@@ -148,6 +148,16 @@ uv run pytest
 uv run scripts/stress.py
 ```
 
+## Releasing
+
+Set the new version in `pyproject.toml` and commit it. Publishing a GitHub
+release then runs the tests, builds the package and uploads it to PyPI. The
+release fails if its tag does not match the version:
+
+```bash
+gh release create v0.1.0 --generate-notes
+```
+
 ## Related projects
 
 - [portpicker](https://pypi.org/project/portpicker/) by Google, which inspired
