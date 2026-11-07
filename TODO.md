@@ -47,7 +47,6 @@ normal use.
   change in the code.
 - Test the lowest supported pytest on the newest Python too.
 - Limit the `pypi` environment to `v*` tags, and check that the tag is on `main`.
-- Set `enable-cache: false` in the release build job.
 
 ## Packaging
 
