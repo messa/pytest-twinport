@@ -87,17 +87,14 @@ def lease_port(*, port_range: tuple[int, int] | None = None) -> PortLease:
     reserved ports are always left out.
     """
     guards = candidate_guards(port_range)
-    if guards:
-        start = _rng.randrange(len(guards))
-        for guard_port in guards[start:] + guards[:start]:
-            lease = _try_lease(guard_port)
-            if lease is not None:
-                return lease
-    raise NoFreePortError(
-        f"No free port pair found among {len(guards)} candidates. "
-        "Set TWINPORT_RANGE to a range outside the ephemeral ports if this "
-        "system leaves too few of them."
-    )
+    if not guards:
+        raise NoFreePortError("The port range has no pair outside the ephemeral and reserved ports.")
+    start = _rng.randrange(len(guards))
+    for guard_port in guards[start:] + guards[:start]:
+        lease = _try_lease(guard_port)
+        if lease is not None:
+            return lease
+    raise NoFreePortError(f"None of the {len(guards)} port pairs in the range could be leased.")
 
 
 def _try_lease(guard_port: int) -> PortLease | None:
@@ -114,8 +111,12 @@ def _try_lease(guard_port: int) -> PortLease | None:
 
 
 def _bind_guard(port: int) -> socket | None:
-    # No SO_REUSEADDR, and listen(): two sockets with SO_REUSEADDR can share a
-    # port on Linux unless one of them is listening.
+    # On Windows, a guard on loopback would succeed next to a server on the
+    # wildcard address and take over its local connections.
+    if not _can_bind(AF_INET, SOCK_STREAM, "0.0.0.0", port):
+        return None
+    # No SO_REUSEADDR, so that a second bind of this port fails. listen() makes
+    # the port look taken to tools that check it by connecting.
     guard = socket(AF_INET, SOCK_STREAM)
     try:
         guard.bind((GUARD_HOST, port))

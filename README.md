@@ -78,33 +78,45 @@ Other processes can't take the pair, because they fail on the guard. When the
 process ends, even with `SIGKILL`, the kernel closes the guard. Nothing stale is
 left behind.
 
-The lock lives in the same network namespace as the port. Containers with their
-own network stack don't block each other, and they don't need to, because their
-ports don't collide either.
+The lock lives in the network namespace of the process that holds it, so it only
+protects ports used in that same namespace. See the note on containers below.
 
 Ports are only chosen outside the ephemeral range. This matters: outgoing
 connections take their source port from that range at any moment, and they know
-nothing about guards. The range is read from the system, and on Linux, ports
-listed in `ip_local_reserved_ports` are skipped too.
+nothing about guards. Linux, macOS and BSD report the range, Windows uses a fixed
+assumption (see [Platform support](#platform-support)). On Linux, ports listed in
+`ip_local_reserved_ports` are skipped too.
 
 ## Guarantees
 
 | Scenario | Protected? |
 | --- | --- |
 | Tests in one `pytest-xdist` run | Yes |
-| Separate pytest runs on one machine | Yes |
+| Separate pytest runs in one network namespace | Yes |
+| Pytest runs in separate network namespaces publishing ports to one host | No, see below |
 | Outgoing connections from anything on the machine | Yes, leased ports are outside the ephemeral range |
-| Server restarting during a test | Yes, the port stays reserved |
+| Server restarting during a test | Yes, nobody else gets the port |
 | Crashed or killed pytest process | Yes, the kernel releases the port |
 | Software using a fixed port in the same range | No, the port is only checked when it is leased |
 | Port allocation by other tools | No, every allocator has to use guards |
 
-The port is free on TCP and UDP, on IPv4 and IPv6, and it can be bound without
-`SO_REUSEADDR`. Every lease uses two port numbers.
+The port is free on TCP and UDP, on IPv4 and IPv6, and the first bind works
+without `SO_REUSEADDR`. A server that restarts needs `SO_REUSEADDR` as usual,
+because its old connections can keep the port in `TIME_WAIT`. Every lease uses two
+port numbers.
 
 A process created with `fork()` without `exec()` inherits the guard, and the
-port stays blocked until that process ends too. This wastes the port for a
-moment, but can't cause a collision.
+port stays blocked until that process ends too. This can last for a whole test
+session, but can't cause a collision.
+
+Containers with their own network stack have their own ports, so tests running
+inside them don't collide. That changes once they publish ports to a shared host,
+for example when pytest runs in a container and starts other containers with
+`docker run -p PORT:80` through a shared Docker socket. The guard is then in a
+different namespace than the published port, so two such runs can get the same
+port. To avoid this, run pytest with `--network host`, give every run its own
+`TWINPORT_RANGE`, or let Docker choose the port with `-p 80` and read it with
+`docker port`.
 
 ## Configuration
 
@@ -115,15 +127,16 @@ export TWINPORT_RANGE=20000-30000
 ```
 
 `lease_port(port_range=(20000, 30000))` does the same for a single lease.
-Ephemeral ports are left out in both cases. If a port range turns out to be
-empty or full, `NoFreePortError` is raised.
+Ephemeral ports are left out in both cases. If no pair can be leased,
+`NoFreePortError` is raised. This also happens when the ephemeral range of the
+system covers nearly all ports, and then the only fix is to make it smaller.
 
 ## Measurements
 
 `scripts/stress.py` runs parallel processes that repeatedly get a port, wait up
 to 2 ms like a starting server, then bind the port without `SO_REUSEADDR`. It
-counts failed binds. The results of three runs with 16 processes, 8000
-allocations each, and a range of 200 ports (Linux, 6 cores):
+counts failed binds. These are the results of three runs. Each run used 16
+processes, 8000 allocations in total and a range of 200 ports (Linux, 6 cores):
 
 | Method | Collisions |
 | --- | --- |
@@ -139,9 +152,14 @@ allocations had 0 collisions too.
 
 The tests pass on Linux, macOS and Windows. BSD systems have not been tried out.
 
-On Windows, a bind to a wildcard address does not conflict with a bind to a
-specific address. Ports are checked on wildcard and loopback addresses, so a
-service listening only on another address of the machine is not detected there.
+There are two limits on Windows:
+
+- A bind to a wildcard address does not conflict with a bind to a specific
+  address. Ports are checked on wildcard and loopback addresses, so a service
+  listening only on another address of the machine is not detected.
+- The ephemeral range is not read from the system. Ports from 32768 up are left
+  out, which covers the default range. If the range was changed with `netsh` to
+  start lower, set `TWINPORT_RANGE` to stay out of it.
 
 ## Development
 

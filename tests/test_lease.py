@@ -143,9 +143,10 @@ def test_pair_with_busy_odd_port_is_skipped(pair, family, kind, host):
     lease_port(port_range=pair).release()
 
 
-def test_pair_with_busy_guard_is_skipped(pair):
+@mark.parametrize("host", ["127.0.0.1", "0.0.0.0"])
+def test_pair_with_busy_guard_is_skipped(pair, host):
     guard_port, _ = pair
-    with bound_socket(AF_INET, SOCK_STREAM, "127.0.0.1", guard_port):
+    with bound_socket(AF_INET, SOCK_STREAM, host, guard_port):
         with raises(NoFreePortError):
             lease_port(port_range=pair)
 
@@ -172,12 +173,14 @@ def test_port_in_time_wait_is_skipped(pair):
 
 def test_spawned_process_does_not_keep_the_guard(pair):
     lease = lease_port(port_range=pair)
-    child = Popen([executable, "-c", "import sys; stdin.read()"], stdin=PIPE)
+    # close_fds=False, otherwise the child could not inherit the guard anyway.
+    child = Popen([executable, "-c", "import sys; sys.stdin.read()"], stdin=PIPE, close_fds=False)
     try:
         lease.release()
         lease_port(port_range=pair).release()
     finally:
         child.communicate()
+    assert child.returncode == 0
 
 
 def test_guard_is_released_when_the_process_is_killed(pair):
@@ -204,5 +207,5 @@ def test_guard_is_released_when_the_process_is_killed(pair):
 
 def test_empty_range_raises_no_free_port_error():
     # Port 65535 has no partner, so this range contains no whole pair.
-    with raises(NoFreePortError):
+    with raises(NoFreePortError, match="no pair"):
         lease_port(port_range=(65535, 65535))

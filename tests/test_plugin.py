@@ -8,8 +8,8 @@ def test_twinport_fixture_holds_the_port_during_the_test(pytester):
 
         def test_port(twinport):
             assert twinport % 2 == 1
-            with raises(OSError):
-                socket().bind(("127.0.0.1", twinport - 1))
+            with socket() as guard, raises(OSError):
+                guard.bind(("127.0.0.1", twinport - 1))
             with socket() as server:
                 server.bind(("127.0.0.1", twinport))
         """
@@ -42,12 +42,17 @@ def test_factory_returns_different_ports_and_releases_them(pytester):
         """
         from socket import socket
 
+        from pytest import raises
+
         ports = []
 
 
         def test_factory(twinport_factory):
             ports.extend(twinport_factory() for _ in range(20))
             assert len(set(ports)) == 20
+            for port in ports:
+                with socket() as sock, raises(OSError):
+                    sock.bind(("127.0.0.1", port - 1))
 
 
         def test_released():
