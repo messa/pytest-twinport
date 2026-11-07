@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import functools
-import os
-import subprocess
+from functools import cache
+from os import environ
+from subprocess import CalledProcessError, run
 
 DEFAULT_RANGE = (15000, 65535)
 RANGE_ENV_VAR = "TWINPORT_RANGE"
@@ -30,7 +30,7 @@ def candidate_guards(port_range: tuple[int, int] | None = None) -> list[int]:
 
 
 def _range_from_env() -> tuple[int, int] | None:
-    value = os.environ.get(RANGE_ENV_VAR)
+    value = environ.get(RANGE_ENV_VAR)
     if not value:
         return None
     try:
@@ -47,7 +47,7 @@ def parse_range(value: str) -> tuple[int, int]:
     return int(low), int(high)
 
 
-@functools.cache
+@cache
 def _excluded_ports() -> frozenset[int]:
     # Outgoing connections take their source port from the ephemeral range at
     # any moment and know nothing about leases, so no lease is safe in there.
@@ -65,13 +65,13 @@ def _ephemeral_ranges() -> list[tuple[int, int]]:
     except OSError:
         pass
     try:
-        output = subprocess.run(
+        output = run(
             ["sysctl", "net.inet.ip.portrange"],
             capture_output=True,
             text=True,
             check=True,
         ).stdout
-    except (OSError, subprocess.CalledProcessError):
+    except (OSError, CalledProcessError):
         return [FALLBACK_EPHEMERAL_RANGE]
     return parse_bsd_ranges(output) or [FALLBACK_EPHEMERAL_RANGE]
 

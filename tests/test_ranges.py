@@ -1,7 +1,7 @@
-import sys
 from pathlib import Path
+from sys import platform
 
-import pytest
+from pytest import mark, raises
 
 from pytest_twinport import lease_port
 from pytest_twinport._ranges import (
@@ -20,7 +20,7 @@ net.inet.ip.portrange.hilast: 65535
 """
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="reads /proc")
+@mark.skipif(platform != "linux", reason="reads /proc")
 def test_no_candidate_is_inside_the_ephemeral_range():
     text = Path("/proc/sys/net/ipv4/ip_local_port_range").read_text()
     low, high = map(int, text.split())
@@ -37,9 +37,9 @@ def test_range_can_be_a_single_pair():
     assert candidate_guards((20000, 20001)) == [20000]
 
 
-@pytest.mark.parametrize("port_range", [(0, 100), (2000, 1000), (1000, 70000)])
+@mark.parametrize("port_range", [(0, 100), (2000, 1000), (1000, 70000)])
 def test_invalid_range_is_rejected(port_range):
-    with pytest.raises(ValueError, match="Invalid port range"):
+    with raises(ValueError, match="Invalid port range"):
         candidate_guards(port_range)
 
 
@@ -59,10 +59,10 @@ def test_lease_uses_range_from_environment(monkeypatch):
         assert 20000 <= port <= 20099
 
 
-@pytest.mark.parametrize("value", ["20000", "a-b", "1-2-3"])
+@mark.parametrize("value", ["20000", "a-b", "1-2-3"])
 def test_malformed_environment_range_is_rejected(monkeypatch, value):
     monkeypatch.setenv("TWINPORT_RANGE", value)
-    with pytest.raises(ValueError, match="TWINPORT_RANGE"):
+    with raises(ValueError, match="TWINPORT_RANGE"):
         candidate_guards()
 
 
@@ -74,7 +74,7 @@ def test_parse_bsd_ranges_without_data():
     assert parse_bsd_ranges("") == []
 
 
-@pytest.mark.parametrize(
+@mark.parametrize(
     "value, expected",
     [
         ("\n", set()),

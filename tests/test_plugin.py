@@ -1,16 +1,16 @@
 def test_twinport_fixture_holds_the_port_during_the_test(pytester):
     pytester.makepyfile(
         """
-        import socket
+        from socket import socket
 
-        import pytest
+        from pytest import raises
 
 
         def test_port(twinport):
             assert twinport % 2 == 1
-            with pytest.raises(OSError):
-                socket.socket().bind(("127.0.0.1", twinport - 1))
-            with socket.socket() as server:
+            with raises(OSError):
+                socket().bind(("127.0.0.1", twinport - 1))
+            with socket() as server:
                 server.bind(("127.0.0.1", twinport))
         """
     )
@@ -20,7 +20,7 @@ def test_twinport_fixture_holds_the_port_during_the_test(pytester):
 def test_twinport_fixture_releases_the_port_after_the_test(pytester):
     pytester.makepyfile(
         """
-        import socket
+        from socket import socket
 
         guards = []
 
@@ -30,7 +30,7 @@ def test_twinport_fixture_releases_the_port_after_the_test(pytester):
 
 
         def test_second():
-            with socket.socket() as sock:
+            with socket() as sock:
                 sock.bind(("127.0.0.1", guards[0]))
         """
     )
@@ -40,7 +40,7 @@ def test_twinport_fixture_releases_the_port_after_the_test(pytester):
 def test_factory_returns_different_ports_and_releases_them(pytester):
     pytester.makepyfile(
         """
-        import socket
+        from socket import socket
 
         ports = []
 
@@ -52,7 +52,7 @@ def test_factory_returns_different_ports_and_releases_them(pytester):
 
         def test_released():
             for port in ports:
-                with socket.socket() as sock:
+                with socket() as sock:
                     sock.bind(("127.0.0.1", port - 1))
         """
     )
@@ -62,12 +62,12 @@ def test_factory_returns_different_ports_and_releases_them(pytester):
 def test_lease_port_supports_custom_fixture_scopes(pytester):
     pytester.makepyfile(
         """
-        import pytest
+        from pytest import fixture
 
         from pytest_twinport import lease_port
 
 
-        @pytest.fixture(scope="session")
+        @fixture(scope="session")
         def server_port():
             with lease_port() as port:
                 yield port

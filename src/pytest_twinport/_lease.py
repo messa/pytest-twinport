@@ -8,26 +8,35 @@ process is killed.
 
 from __future__ import annotations
 
-import errno
-import random
-import socket
+from errno import EADDRNOTAVAIL, EAFNOSUPPORT
+from random import SystemRandom
+from socket import (
+    AF_INET,
+    AF_INET6,
+    IPPROTO_IPV6,
+    IPV6_V6ONLY,
+    SOCK_DGRAM,
+    SOCK_STREAM,
+    has_ipv6,
+    socket,
+)
 from types import TracebackType
 
 from ._ranges import candidate_guards
 
 GUARD_HOST = "127.0.0.1"
 
-_IPV6_UNAVAILABLE = {errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL}
+_IPV6_UNAVAILABLE = {EAFNOSUPPORT, EADDRNOTAVAIL}
 
 # Wildcard and specific addresses conflict on Linux and macOS, but not on
 # Windows, so both have to be checked.
-_PROBE_ADDRESSES = [(socket.AF_INET, "0.0.0.0"), (socket.AF_INET, "127.0.0.1")]
-if socket.has_ipv6:
-    _PROBE_ADDRESSES += [(socket.AF_INET6, "::"), (socket.AF_INET6, "::1")]
+_PROBE_ADDRESSES = [(AF_INET, "0.0.0.0"), (AF_INET, "127.0.0.1")]
+if has_ipv6:
+    _PROBE_ADDRESSES += [(AF_INET6, "::"), (AF_INET6, "::1")]
 
 # Private generator: tests often seed the global one, and workers sharing a seed
 # would all fight over the same pairs.
-_rng = random.SystemRandom()
+_rng = SystemRandom()
 
 
 class NoFreePortError(RuntimeError):
@@ -42,7 +51,7 @@ class PortLease:
     port number and releases it on exit.
     """
 
-    def __init__(self, port: int, guard: socket.socket) -> None:
+    def __init__(self, port: int, guard: socket) -> None:
         self.port = port
         self._guard = guard
 
@@ -103,10 +112,10 @@ def _try_lease(guard_port: int) -> PortLease | None:
     return PortLease(port, guard)
 
 
-def _bind_guard(port: int) -> socket.socket | None:
+def _bind_guard(port: int) -> socket | None:
     # No SO_REUSEADDR, and listen(): two sockets with SO_REUSEADDR can share a
     # port on Linux unless one of them is listening.
-    guard = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    guard = socket(AF_INET, SOCK_STREAM)
     try:
         guard.bind((GUARD_HOST, port))
         guard.listen(1)
@@ -122,17 +131,17 @@ def _is_free(port: int) -> bool:
     # also holds for servers that do not set it.
     return all(
         _can_bind(family, kind, host, port)
-        for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM)
+        for kind in (SOCK_STREAM, SOCK_DGRAM)
         for family, host in _PROBE_ADDRESSES
     )
 
 
 def _can_bind(family: int, kind: int, host: str, port: int) -> bool:
     try:
-        with socket.socket(family, kind) as sock:
-            if family == socket.AF_INET6:
-                sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+        with socket(family, kind) as sock:
+            if family == AF_INET6:
+                sock.setsockopt(IPPROTO_IPV6, IPV6_V6ONLY, 1)
             sock.bind((host, port))
     except OSError as exc:
-        return family == socket.AF_INET6 and exc.errno in _IPV6_UNAVAILABLE
+        return family == AF_INET6 and exc.errno in _IPV6_UNAVAILABLE
     return True

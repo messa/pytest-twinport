@@ -1,15 +1,15 @@
-import json
-import subprocess
-import sys
+from json import loads
 from pathlib import Path
+from subprocess import run
+from sys import executable
 
 SCRIPT = Path(__file__).parent.parent / "scripts" / "stress.py"
 
 
 def test_parallel_processes_never_collide():
-    output = subprocess.run(
+    output = run(
         [
-            sys.executable,
+            executable,
             str(SCRIPT),
             "--mode=twinport",
             "--workers=8",
@@ -20,6 +20,6 @@ def test_parallel_processes_never_collide():
         check=True,
         timeout=120,
     ).stdout
-    result = json.loads(output)
+    result = loads(output)
     assert result["allocations"] == 1600
     assert result["collisions"] == 0
