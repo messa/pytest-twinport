@@ -40,4 +40,3 @@ normal use.
   ecosystem to Dependabot. A new ruff or mypy can now block a release with no
   change in the code.
 - Test the lowest supported pytest on the newest Python too.
-- Limit the `pypi` environment to `v*` tags in the GitHub settings.
