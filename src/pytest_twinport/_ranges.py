@@ -6,6 +6,7 @@ from functools import cache
 from os import environ
 from subprocess import CalledProcessError, run
 
+
 DEFAULT_RANGE = (15000, 65535)
 RANGE_ENV_VAR = "TWINPORT_RANGE"
 
@@ -22,11 +23,7 @@ def candidate_guards(port_range: tuple[int, int] | None = None) -> list[int]:
     if not 1 <= low <= high <= 65535:
         raise ValueError(f"Invalid port range: {low}-{high}")
     excluded = _excluded_ports()
-    return [
-        port
-        for port in range(low + low % 2, high, 2)
-        if port not in excluded and port + 1 not in excluded
-    ]
+    return [port for port in range(low + low % 2, high, 2) if port not in excluded and port + 1 not in excluded]
 
 
 def _range_from_env() -> tuple[int, int] | None:
@@ -36,9 +33,7 @@ def _range_from_env() -> tuple[int, int] | None:
     try:
         low, high = parse_range(value)
     except ValueError:
-        raise ValueError(
-            f"{RANGE_ENV_VAR} must look like 20000-30000, got {value!r}"
-        ) from None
+        raise ValueError(f"{RANGE_ENV_VAR} must look like 20000-30000, got {value!r}") from None
     return low, high
 
 

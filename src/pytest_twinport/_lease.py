@@ -24,6 +24,7 @@ from types import TracebackType
 
 from ._ranges import candidate_guards
 
+
 GUARD_HOST = "127.0.0.1"
 
 _IPV6_UNAVAILABLE = {EAFNOSUPPORT, EADDRNOTAVAIL}
@@ -130,9 +131,7 @@ def _is_free(port: int) -> bool:
     # No SO_REUSEADDR, so that ports in TIME_WAIT count as busy and the result
     # also holds for servers that do not set it.
     return all(
-        _can_bind(family, kind, host, port)
-        for kind in (SOCK_STREAM, SOCK_DGRAM)
-        for family, host in _PROBE_ADDRESSES
+        _can_bind(family, kind, host, port) for kind in (SOCK_STREAM, SOCK_DGRAM) for family, host in _PROBE_ADDRESSES
     )
 
 

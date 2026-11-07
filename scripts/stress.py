@@ -27,6 +27,7 @@ from time import sleep, time
 
 from pytest_twinport import lease_port
 
+
 HOST = "127.0.0.1"
 START_DELAY_SECONDS = 2.0
 MAX_STARTUP_SECONDS = 0.002
@@ -76,9 +77,7 @@ def serve_once(port: int) -> None:
         connection.close()
 
 
-def worker(
-    mode: str, port_range: tuple[int, int], iterations: int, start_at: float
-) -> int:
+def worker(mode: str, port_range: tuple[int, int], iterations: int, start_at: float) -> int:
     sleep(max(0.0, start_at - time()))
     collisions = 0
     for _ in range(iterations):
@@ -93,16 +92,11 @@ def worker(
     return collisions
 
 
-def run(
-    mode: str, workers: int, iterations: int, port_range: tuple[int, int]
-) -> dict[str, object]:
+def run(mode: str, workers: int, iterations: int, port_range: tuple[int, int]) -> dict[str, object]:
     start_at = time() + START_DELAY_SECONDS
     context = get_context("spawn")
     with ProcessPoolExecutor(workers, mp_context=context) as pool:
-        futures = [
-            pool.submit(worker, mode, port_range, iterations, start_at)
-            for _ in range(workers)
-        ]
+        futures = [pool.submit(worker, mode, port_range, iterations, start_at) for _ in range(workers)]
         collisions = sum(future.result() for future in futures)
     return {
         "mode": mode,

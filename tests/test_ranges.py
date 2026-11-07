@@ -10,6 +10,7 @@ from pytest_twinport._ranges import (
     parse_port_list,
 )
 
+
 MACOS_SYSCTL = """\
 net.inet.ip.portrange.lowfirst: 1023
 net.inet.ip.portrange.lowlast: 600

@@ -42,8 +42,14 @@ packages = ["src/pytest_twinport"]
 testpaths = ["tests"]
 addopts = "-p pytester"
 
+[tool.ruff]
+line-length = 120
+
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "UP"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
 
 [tool.mypy]
 files = ["src"]

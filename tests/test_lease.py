@@ -12,6 +12,7 @@ from socket import (
 )
 from subprocess import PIPE, Popen
 from sys import executable
+from textwrap import dedent
 
 from pytest import fixture, mark, param, raises, skip
 
@@ -180,13 +181,13 @@ def test_spawned_process_does_not_keep_the_guard(pair):
 
 
 def test_guard_is_released_when_the_process_is_killed(pair):
-    low, high = pair
-    code = (
-        "from pytest_twinport import lease_port\n"
-        f"lease = lease_port(port_range=({low}, {high}))\n"
-        "print('leased', flush=True)\n"
-        "input()\n"
-    )
+    code = dedent(f"""
+        from pytest_twinport import lease_port
+
+        lease = lease_port(port_range={pair})
+        print("leased", flush=True)
+        input()
+    """)
     child = Popen(
         [executable, "-c", code],
         stdin=PIPE,

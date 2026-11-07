@@ -3,6 +3,7 @@ from pathlib import Path
 from subprocess import run
 from sys import executable
 
+
 SCRIPT = Path(__file__).parent.parent / "scripts" / "stress.py"
 
 
