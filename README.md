@@ -148,6 +148,9 @@ service listening only on another address of the machine is not detected there.
 ```bash
 uv sync
 uv run pytest
+uv run ruff check
+uv run ruff format
+uv run mypy
 uv run scripts/stress.py
 ```
 
