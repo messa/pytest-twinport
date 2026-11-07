@@ -41,6 +41,7 @@ packages = ["src/pytest_twinport"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-p pytester"
+filterwarnings = ["error"]
 
 [tool.ruff]
 line-length = 120

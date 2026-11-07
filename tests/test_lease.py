@@ -41,11 +41,15 @@ def pair() -> tuple[int, int]:
 
 def bound_socket(family, kind, host, port, *, reuse=False) -> socket:
     sock = socket(family, kind)
-    if family == AF_INET6:
-        sock.setsockopt(IPPROTO_IPV6, IPV6_V6ONLY, 1)
-    if reuse:
-        sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    sock.bind((host, port))
+    try:
+        if family == AF_INET6:
+            sock.setsockopt(IPPROTO_IPV6, IPV6_V6ONLY, 1)
+        if reuse:
+            sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        sock.bind((host, port))
+    except OSError:
+        sock.close()
+        raise
     return sock
 
 

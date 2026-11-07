@@ -35,7 +35,6 @@ normal use.
 - Make tests independent of `TWINPORT_RANGE` set in the environment.
 - Don't assume that ports 20000 and 21000 are outside the ephemeral range, in the
   tests and in the default range of `scripts/stress.py`.
-- Set `filterwarnings = error` to catch unclosed sockets.
 - Run mypy on the tests and scripts too.
 
 ## CI and release
