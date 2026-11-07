@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytest-twinport"
+version = "0.1.0"
+description = "Pytest plugin that leases free TCP/UDP ports without race conditions between parallel test runs"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Petr Messner" }]
+requires-python = ">=3.10"
+dependencies = ["pytest>=7"]
+keywords = ["pytest", "port", "free port", "unused port", "e2e", "xdist"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Repository = "https://github.com/messa/pytest-twinport"
+Issues = "https://github.com/messa/pytest-twinport/issues"
+
+[project.entry-points.pytest11]
+twinport = "pytest_twinport.plugin"
+
+[dependency-groups]
+dev = ["pytest-xdist"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pytest_twinport"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p pytester"
