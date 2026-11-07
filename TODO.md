@@ -14,7 +14,6 @@ normal use.
 
 ## Windows
 
-- Set `SO_EXCLUSIVEADDRUSE` on the guard.
 - Read the ephemeral range with `netsh int ipv4 show dynamicport tcp` and `udp`,
   parsing only the numbers, because the output is localized.
 - Find out whether the guard needs `listen()`. Without it, clients that hit the

@@ -12,7 +12,7 @@ from socket import (
     socket,
 )
 from subprocess import PIPE, Popen
-from sys import executable
+from sys import executable, platform
 from textwrap import dedent
 
 from pytest import fixture, mark, param, raises, skip
@@ -208,6 +208,17 @@ def test_guard_is_released_when_the_process_is_killed(pair):
     child.kill()
     child.communicate()
     lease_port(port_range=pair).release()
+
+
+@mark.skipif(platform != "win32", reason="the option exists only on Windows")
+def test_guard_is_exclusive_on_windows():
+    from socket import SO_EXCLUSIVEADDRUSE
+
+    lease = lease_port()
+    try:
+        assert lease._guard.getsockopt(SOL_SOCKET, SO_EXCLUSIVEADDRUSE) != 0
+    finally:
+        lease.release()
 
 
 def failing_call(error_number):

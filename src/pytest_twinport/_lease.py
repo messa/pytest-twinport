@@ -8,6 +8,7 @@ process is killed.
 
 from __future__ import annotations
 
+import sys
 from errno import EACCES, EADDRINUSE, EADDRNOTAVAIL, EAFNOSUPPORT
 from random import SystemRandom
 from socket import (
@@ -23,6 +24,10 @@ from socket import (
 from types import TracebackType
 
 from ._ranges import candidate_guards
+
+
+if sys.platform == "win32":
+    from socket import SO_EXCLUSIVEADDRUSE, SOL_SOCKET
 
 
 GUARD_HOST = "127.0.0.1"
@@ -125,6 +130,9 @@ def _bind_guard(port: int) -> socket | None:
     # the port look taken to tools that check it by connecting.
     guard = socket(AF_INET, SOCK_STREAM)
     try:
+        if sys.platform == "win32":
+            # Windows otherwise lets a socket with SO_REUSEADDR take the port over.
+            guard.setsockopt(SOL_SOCKET, SO_EXCLUSIVEADDRUSE, 1)
         guard.bind((GUARD_HOST, port))
         guard.listen(1)
     except OSError as exc:

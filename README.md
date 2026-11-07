@@ -232,6 +232,8 @@ These solve neighboring problems:
 - An empty `port_range` raises `ValueError` instead of using the default range.
 - System errors such as running out of file descriptors are raised as they are,
   instead of ending with a misleading `NoFreePortError`.
+- On Windows, the guard uses `SO_EXCLUSIVEADDRUSE`, so that a socket with
+  `SO_REUSEADDR` can't take it over.
 
 ### 0.1.0 (2026-11-07)
 
