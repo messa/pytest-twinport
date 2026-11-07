@@ -13,8 +13,6 @@ jobs:
   test:
     name: ${{ matrix.os }}, Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
-    # Windows has not been tried yet, so it does not block anything for now.
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     timeout-minutes: 10
     strategy:
       fail-fast: false

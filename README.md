@@ -137,8 +137,11 @@ allocations had 0 collisions too.
 
 ## Platform support
 
-The tests pass on Linux and macOS. On Windows they currently fail, so Windows is
-not supported yet. BSD systems have not been tried out.
+The tests pass on Linux, macOS and Windows. BSD systems have not been tried out.
+
+On Windows, a bind to a wildcard address does not conflict with a bind to a
+specific address. Ports are checked on wildcard and loopback addresses, so a
+service listening only on another address of the machine is not detected there.
 
 ## Development
 
