@@ -5,9 +5,6 @@ normal use.
 
 ## Library
 
-- Treat only `EADDRINUSE` and `EACCES` as a busy port, and let other errors
-  through. Running out of file descriptors now ends with a misleading
-  `NoFreePortError`. Check how these errors map on Windows first.
 - Raise an error when a released lease is used in `with`. It now returns the
   port with no protection.
 - Add a way to use ephemeral ports on systems where that range covers nearly all

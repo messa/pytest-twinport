@@ -230,6 +230,8 @@ These solve neighboring problems:
 ### Unreleased
 
 - An empty `port_range` raises `ValueError` instead of using the default range.
+- System errors such as running out of file descriptors are raised as they are,
+  instead of ending with a misleading `NoFreePortError`.
 
 ### 0.1.0 (2026-11-07)
 

@@ -8,7 +8,7 @@ process is killed.
 
 from __future__ import annotations
 
-from errno import EADDRNOTAVAIL, EAFNOSUPPORT
+from errno import EACCES, EADDRINUSE, EADDRNOTAVAIL, EAFNOSUPPORT
 from random import SystemRandom
 from socket import (
     AF_INET,
@@ -27,6 +27,8 @@ from ._ranges import candidate_guards
 
 GUARD_HOST = "127.0.0.1"
 
+# EACCES covers privileged ports and the port ranges excluded on Windows.
+_BUSY_ERRORS = {EADDRINUSE, EACCES}
 _IPV6_UNAVAILABLE = {EAFNOSUPPORT, EADDRNOTAVAIL}
 
 # Wildcard and specific addresses conflict on Linux and macOS, but not on
@@ -104,10 +106,14 @@ def _try_lease(guard_port: int) -> PortLease | None:
     # The odd port is only ever probed by the guard holder, so a probe can
     # neither race another allocator nor disturb a server using a leased port.
     port = guard_port + 1
-    if not _is_free(port):
+    try:
+        if _is_free(port):
+            return PortLease(port, guard)
+    except OSError:
         guard.close()
-        return None
-    return PortLease(port, guard)
+        raise
+    guard.close()
+    return None
 
 
 def _bind_guard(port: int) -> socket | None:
@@ -121,9 +127,11 @@ def _bind_guard(port: int) -> socket | None:
     try:
         guard.bind((GUARD_HOST, port))
         guard.listen(1)
-    except OSError:
+    except OSError as exc:
         guard.close()
-        return None
+        if exc.errno in _BUSY_ERRORS:
+            return None
+        raise
     return guard
 
 
@@ -143,5 +151,9 @@ def _can_bind(family: int, kind: int, host: str, port: int) -> bool:
                 sock.setsockopt(IPPROTO_IPV6, IPV6_V6ONLY, 1)
             sock.bind((host, port))
     except OSError as exc:
-        return family == AF_INET6 and exc.errno in _IPV6_UNAVAILABLE
+        if exc.errno in _BUSY_ERRORS:
+            return False
+        if family == AF_INET6 and exc.errno in _IPV6_UNAVAILABLE:
+            return True
+        raise
     return True

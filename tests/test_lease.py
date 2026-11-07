@@ -1,3 +1,4 @@
+from errno import EACCES, EADDRINUSE, EMFILE
 from socket import (
     AF_INET,
     AF_INET6,
@@ -16,7 +17,7 @@ from textwrap import dedent
 
 from pytest import fixture, mark, param, raises, skip
 
-from pytest_twinport import NoFreePortError, PortLease, lease_port
+from pytest_twinport import NoFreePortError, PortLease, _lease, lease_port
 
 
 def has_ipv6_loopback() -> bool:
@@ -206,6 +207,35 @@ def test_guard_is_released_when_the_process_is_killed(pair):
         lease_port(port_range=pair)
     child.kill()
     child.communicate()
+    lease_port(port_range=pair).release()
+
+
+def failing_call(error_number):
+    def fail(*args):
+        raise OSError(error_number, "Simulated error")
+
+    return fail
+
+
+@mark.parametrize("error_number", [EADDRINUSE, EACCES])
+def test_busy_errors_mean_the_pair_is_skipped(monkeypatch, pair, error_number):
+    monkeypatch.setattr(_lease, "socket", failing_call(error_number))
+    with raises(NoFreePortError):
+        lease_port(port_range=pair)
+
+
+def test_other_errors_are_not_reported_as_busy_ports(monkeypatch):
+    monkeypatch.setattr(_lease, "socket", failing_call(EMFILE))
+    with raises(OSError) as exc_info:
+        lease_port()
+    assert exc_info.value.errno == EMFILE
+
+
+def test_guard_is_released_when_the_check_of_the_port_fails(monkeypatch, pair):
+    with monkeypatch.context() as patch:
+        patch.setattr(_lease, "_is_free", failing_call(EMFILE))
+        with raises(OSError):
+            lease_port(port_range=pair)
     lease_port(port_range=pair).release()
 
 
