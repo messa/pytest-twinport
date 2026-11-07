@@ -19,6 +19,12 @@ GUARD_HOST = "127.0.0.1"
 
 _IPV6_UNAVAILABLE = {errno.EAFNOSUPPORT, errno.EADDRNOTAVAIL}
 
+# Wildcard and specific addresses conflict on Linux and macOS, but not on
+# Windows, so both have to be checked.
+_PROBE_ADDRESSES = [(socket.AF_INET, "0.0.0.0"), (socket.AF_INET, "127.0.0.1")]
+if socket.has_ipv6:
+    _PROBE_ADDRESSES += [(socket.AF_INET6, "::"), (socket.AF_INET6, "::1")]
+
 # Private generator: tests often seed the global one, and workers sharing a seed
 # would all fight over the same pairs.
 _rng = random.SystemRandom()
@@ -111,16 +117,14 @@ def _bind_guard(port: int) -> socket.socket | None:
 
 
 def _is_free(port: int) -> bool:
-    # Wildcard addresses conflict with every specific address of their family.
     # IPv4 and IPv6 sockets do not conflict with each other, nor do TCP and UDP.
     # No SO_REUSEADDR, so that ports in TIME_WAIT count as busy and the result
     # also holds for servers that do not set it.
-    for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
-        if not _can_bind(socket.AF_INET, kind, "0.0.0.0", port):
-            return False
-        if socket.has_ipv6 and not _can_bind(socket.AF_INET6, kind, "::", port):
-            return False
-    return True
+    return all(
+        _can_bind(family, kind, host, port)
+        for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM)
+        for family, host in _PROBE_ADDRESSES
+    )
 
 
 def _can_bind(family: int, kind: int, host: str, port: int) -> bool:

@@ -111,9 +111,15 @@ def test_leased_port_can_be_bound_without_so_reuseaddr(family, kind, host):
     "family, host",
     [
         (socket.AF_INET, "127.0.0.1"),
+        (socket.AF_INET, "0.0.0.0"),
         pytest.param(
             socket.AF_INET6,
             "::1",
+            marks=pytest.mark.skipif(not HAS_IPV6_LOOPBACK, reason="no IPv6"),
+        ),
+        pytest.param(
+            socket.AF_INET6,
+            "::",
             marks=pytest.mark.skipif(not HAS_IPV6_LOOPBACK, reason="no IPv6"),
         ),
     ],
