@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Petr Messner" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = ["pytest>=7"]
 keywords = ["pytest", "port", "free port", "unused port", "e2e", "xdist"]
 classifiers = [

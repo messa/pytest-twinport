@@ -137,8 +137,8 @@ allocations had 0 collisions too.
 
 ## Platform support
 
-This version is tested on Linux only. The code handles macOS and BSD as well,
-but that has not been tried out yet, and neither has Windows.
+The tests pass on Linux and macOS. On Windows they currently fail, so Windows is
+not supported yet. BSD systems have not been tried out.
 
 ## Development
 
@@ -160,11 +160,45 @@ gh release create v0.1.0 --generate-notes
 
 ## Related projects
 
+These get a free port for a moment and don't reserve it, so they have the race
+condition described above:
+
+- [pytest-asyncio](https://pypi.org/project/pytest-asyncio/) has the
+  `unused_tcp_port` and `unused_udp_port` fixtures and their factories, based on
+  `bind(0)` and close.
+- [anyio](https://pypi.org/project/anyio/) has the `free_tcp_port` and
+  `free_udp_port` fixtures and their factories. They work the same way, and the
+  TCP and UDP ports are checked on both IPv4 and IPv6.
+- [pytest-unused-port](https://pypi.org/project/pytest-unused-port/) has an
+  `unused_port` fixture based on `bind(0)` and close.
+- [pytest-server-fixtures](https://pypi.org/project/pytest-server-fixtures/)
+  picks a random port below the usual ephemeral range, on a random loopback
+  address.
+
+These coordinate between processes in other ways:
+
 - [portpicker](https://pypi.org/project/portpicker/) by Google, which inspired
   this project, solves the race with an optional `portserver` daemon.
   `pytest-twinport` is not an integration of that library.
+- [pytest-services](https://pypi.org/project/pytest-services/) has a
+  `port_getter` fixture that keeps the list of used ports in a shared lock file.
+- [pytest-postgresql](https://pypi.org/project/pytest-postgresql/) marks its
+  port with a file in the temporary directory of the test run, which coordinates
+  `pytest-xdist` workers.
+- [portkeeper](https://pypi.org/project/portkeeper/) keeps reservations in a JSON
+  registry protected by a file lock.
+
+These solve neighboring problems:
+
 - [port-for](https://pypi.org/project/port-for/) manages persistent port
   assignments. It avoids the ephemeral range as well.
+- [ephemeral-port-reserve](https://pypi.org/project/ephemeral-port-reserve/)
+  forces an ephemeral port into the `TIME_WAIT` state before releasing it.
+- [portlock](https://pypi.org/project/portlock/) uses a bound port to make sure
+  that only one instance of a script is running.
+- [pytest-localserver](https://pypi.org/project/pytest-localserver/) provides
+  test servers that bind to port 0 themselves, so they don't need a free port up
+  front.
 
 ## License
 
