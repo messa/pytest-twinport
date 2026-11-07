@@ -174,7 +174,8 @@ uv run scripts/stress.py
 
 ## Releasing
 
-Set the new version in `pyproject.toml` and commit it. Publishing a GitHub
+Set the new version in `pyproject.toml`, move the changes from Unreleased in the
+[changelog](#changelog) to a new section, and commit it. Publishing a GitHub
 release then runs the tests, builds the package and uploads it to PyPI. The
 release fails if its tag does not match the version:
 
@@ -223,6 +224,16 @@ These solve neighboring problems:
 - [pytest-localserver](https://pypi.org/project/pytest-localserver/) provides
   test servers that bind to port 0 themselves, so they don't need a free port up
   front.
+
+## Changelog
+
+### Unreleased
+
+- Nothing yet.
+
+### 0.1.0 (2026-11-07)
+
+- Initial release.
 
 ## License
 
