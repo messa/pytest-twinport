@@ -83,9 +83,9 @@ protects ports used in that same namespace. See the note on containers below.
 
 Ports are only chosen outside the ephemeral range. This matters: outgoing
 connections take their source port from that range at any moment, and they know
-nothing about guards. Linux, macOS and BSD report the range, Windows uses a fixed
-assumption (see [Platform support](#platform-support)). On Linux, ports listed in
-`ip_local_reserved_ports` are skipped too.
+nothing about guards. Linux, macOS and FreeBSD report the range, Windows and
+other systems use a fixed assumption (see [Platform support](#platform-support)).
+On Linux, ports listed in `ip_local_reserved_ports` are skipped too.
 
 ## Guarantees
 
@@ -120,16 +120,24 @@ port. To avoid this, run pytest with `--network host`, give every run its own
 
 ## Configuration
 
-Ports are chosen from 15000-65535, minus the ephemeral range. To change this:
+Ports are chosen from 15000-65535, minus 30000-32767 and the ephemeral range.
+The range 30000-32767 holds the Kubernetes NodePorts. Their traffic is
+redirected by packet filter rules without any socket bound to the port, so a
+free port there may still not reach your server. To change the range:
 
 ```bash
 export TWINPORT_RANGE=20000-30000
 ```
 
-`lease_port(port_range=(20000, 30000))` does the same for a single lease.
-Ephemeral ports are left out in both cases. If no pair can be leased,
-`NoFreePortError` is raised. This also happens when the ephemeral range of the
-system covers nearly all ports, and then the only fix is to make it smaller.
+`lease_port(port_range=(20000, 30000))` does the same for a single lease. Both
+bounds are inclusive, and the range must contain at least one even port and the
+odd port after it, otherwise `ValueError` is raised. Ephemeral and reserved
+ports are left out in both cases, 30000-32767 only from the default range.
+
+If no pair can be leased, `NoFreePortError` is raised with the range in its
+message. When every pair of the range is excluded, the message also lists the
+excluded ports that overlap the range. This happens when the ephemeral range of
+the system covers nearly all ports, and then the only fix is to make it smaller.
 
 ## Measurements
 
@@ -229,6 +237,18 @@ These solve neighboring problems:
 
 ### Unreleased
 
+- The default range leaves out 30000-32767, the Kubernetes NodePorts.
+- A range without a whole pair raises `ValueError` instead of `NoFreePortError`,
+  also when it comes from `TWINPORT_RANGE`.
+- A `port_range` whose items are not integers raises `TypeError`, one with other
+  than two items raises `ValueError`.
+- Errors name the range and where it came from. When every pair is excluded,
+  they also list the excluded ports that overlap the range.
+- Pairs are tried from a random start with a random stride instead of a linear
+  scan, so leases don't pile up in a crowded range.
+- Systems other than Linux, macOS and FreeBSD don't try `/proc` or `sysctl` and
+  use the fallback ephemeral range right away. A malformed file in `/proc` is
+  treated like a missing one.
 - An empty `port_range` raises `ValueError` instead of using the default range.
 - System errors such as running out of file descriptors are raised as they are,
   instead of ending with a misleading `NoFreePortError`.

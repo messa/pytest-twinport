@@ -15,7 +15,7 @@ from subprocess import PIPE, Popen
 from sys import executable, platform
 from textwrap import dedent
 
-from pytest import fixture, mark, param, raises, skip
+from pytest import mark, param, raises, skip
 
 from pytest_twinport import NoFreePortError, PortLease, _lease, lease_port
 
@@ -30,14 +30,6 @@ def has_ipv6_loopback() -> bool:
 
 
 HAS_IPV6_LOOPBACK = has_ipv6_loopback()
-
-
-@fixture
-def pair() -> tuple[int, int]:
-    """A currently free pair, to be used through a one-pair `port_range`."""
-    lease = lease_port()
-    lease.release()
-    return lease.guard_port, lease.port
 
 
 def bound_socket(family, kind, host, port, *, reuse=False) -> socket:
@@ -250,7 +242,14 @@ def test_guard_is_released_when_the_check_of_the_port_fails(monkeypatch, pair):
     lease_port(port_range=pair).release()
 
 
-def test_empty_range_raises_no_free_port_error():
+def test_range_without_a_whole_pair_raises_value_error():
     # Port 65535 has no partner, so this range contains no whole pair.
-    with raises(NoFreePortError, match="no pair"):
+    with raises(ValueError, match="even port and the odd port after it"):
         lease_port(port_range=(65535, 65535))
+
+
+def test_error_names_the_range_when_all_pairs_are_busy(pair):
+    guard_port, port = pair
+    with lease_port(port_range=pair):
+        with raises(NoFreePortError, match=rf"None of the 1 port pairs in {guard_port}-{port} \(port_range\)"):
+            lease_port(port_range=pair)
