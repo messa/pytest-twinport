@@ -94,7 +94,8 @@ def lease_port(*, port_range: tuple[int, int] | None = None) -> PortLease:
     `port_range` is an inclusive `(low, high)` tuple of ints, which must contain
     at least one even port and the odd port after it. It defaults to the
     `TWINPORT_RANGE` environment variable, then to 15000-65535 without
-    30000-32767. Ephemeral and reserved ports are always left out.
+    30000-32767. Ephemeral ports, and on Linux reserved ports, are always left
+    out.
     """
     guards = candidate_guards(port_range)
     if not guards:
@@ -110,15 +111,16 @@ def lease_port(*, port_range: tuple[int, int] | None = None) -> PortLease:
 
 
 def _random_order(count: int) -> Iterator[int]:
-    """Yield every index below `count` once, in a random order.
+    """Yield every index below `count` once, from a random start with a random stride.
 
-    A random step coprime to `count` spreads the attempts over the range. A
-    linear scan would hand out the pairs right after the leased ones, and the
-    leases would pile up into runs that later scans have to walk through.
+    A stride coprime to `count` visits every index and spreads the attempts over
+    the range. A linear scan would hand out the pairs right after the leased
+    ones, and the leases would pile up into runs that later scans have to walk
+    through. This is not a uniformly random permutation, it doesn't need to be.
     """
     start = _rng.randrange(count)
     step = 1
-    if count > 2:
+    if count > 1:
         step = _rng.randrange(1, count)
         while gcd(step, count) != 1:
             step = _rng.randrange(1, count)

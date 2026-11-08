@@ -24,6 +24,8 @@ jobs:
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run mypy
+      # Code behind sys.platform checks is only type-checked for the platform given.
+      - run: uv run mypy --platform win32
 
   test:
     name: ${{ matrix.os }}, Python ${{ matrix.python }}

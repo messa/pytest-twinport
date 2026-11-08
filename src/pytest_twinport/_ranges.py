@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import sys
 from bisect import bisect_right
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from functools import cache
 from itertools import accumulate
+from operator import index
 from os import environ
 from subprocess import CalledProcessError, run
 
@@ -33,7 +34,12 @@ FALLBACK_EPHEMERAL_RANGE = (32768, 65535)
 
 _LINUX_EPHEMERAL_FILE = "/proc/sys/net/ipv4/ip_local_port_range"
 _LINUX_RESERVED_FILE = "/proc/sys/net/ipv4/ip_local_reserved_ports"
-_BSD_PLATFORMS = ("freebsd", "openbsd", "netbsd", "dragonfly")
+# OpenBSD and NetBSD report their range under other names, so they get the
+# fallback.
+_SYSCTL_PLATFORMS = ("darwin", "freebsd", "dragonfly")
+
+# Error messages list at most this many intervals of one kind.
+_MAX_LISTED_INTERVALS = 5
 
 
 class Candidates:
@@ -47,7 +53,8 @@ class Candidates:
     ) -> None:
         self.port_range = port_range
         self.source = source
-        self.exclusions = tuple((label, intervals) for label, intervals in exclusions if intervals)
+        merged = ((label, merge_intervals(intervals)) for label, intervals in exclusions)
+        self.exclusions = tuple((label, intervals) for label, intervals in merged if intervals)
         excluded = [interval for _, intervals in self.exclusions for interval in intervals]
         self.blocks = guard_blocks(port_range, excluded)
         self._ends = list(accumulate(count for _, count in self.blocks))
@@ -71,14 +78,21 @@ class Candidates:
         return f"{low}-{high} ({self.source})"
 
     def describe_exclusions(self) -> str:
-        return ", ".join(f"{label} {format_intervals(intervals)}" for label, intervals in self.exclusions)
+        """List the excluded ports that overlap the range."""
+        low, high = self.port_range
+        parts = []
+        for label, intervals in self.exclusions:
+            overlapping = [(start, end) for start, end in intervals if start <= high and end >= low]
+            if overlapping:
+                parts.append(f"{label} {format_intervals(overlapping)}")
+        return ", ".join(parts)
 
 
 def candidate_guards(port_range: tuple[int, int] | None = None) -> Candidates:
     """Return the guards of the pairs that may be leased.
 
     The range is `port_range` if given, then `TWINPORT_RANGE`, then the default.
-    Ephemeral and reserved ports of the system are always left out.
+    Ephemeral ports, and on Linux reserved ports, are always left out.
     """
     exclusions = list(system_exclusions())
     if port_range is not None:
@@ -91,13 +105,17 @@ def candidate_guards(port_range: tuple[int, int] | None = None) -> Candidates:
 
 def check_range(port_range: object, source: str) -> Interval:
     """Validate a `(low, high)` range that should contain at least one pair."""
-    if not isinstance(port_range, (tuple, list)) or not all(
-        isinstance(port, int) and not isinstance(port, bool) for port in port_range
-    ):
-        raise TypeError(f"{source} must be a (low, high) tuple of ints, got {port_range!r}")
-    if len(port_range) != 2:
-        raise ValueError(f"{source} must be a (low, high) tuple of ints, got {port_range!r}")
-    low, high = port_range
+    message = f"{source} must be a (low, high) tuple of ints, got {port_range!r}"
+    if not isinstance(port_range, (tuple, list)) or any(isinstance(port, bool) for port in port_range):
+        raise TypeError(message)
+    try:
+        # index() also takes other integer types, such as those of NumPy.
+        ports = [index(port) for port in port_range]
+    except TypeError:
+        raise TypeError(message) from None
+    if len(ports) != 2:
+        raise ValueError(message)
+    low, high = ports
     if not 1 <= low <= high <= 65535:
         raise ValueError(f"Invalid port range {low}-{high} in {source}: it must be within 1-65535 and low <= high")
     if low + low % 2 + 1 > high:
@@ -123,7 +141,7 @@ def guard_blocks(port_range: Interval, excluded: Sequence[Interval]) -> tuple[In
     blocks = []
     guard = low + low % 2
     # The sentinel past the range closes the last block.
-    for excluded_low, excluded_high in [*sorted(excluded), (high + 2, high + 2)]:
+    for excluded_low, excluded_high in [*merge_intervals(excluded), (high + 2, high + 2)]:
         # The last guard before the interval needs its odd port below it too.
         last = min(excluded_low - 2, high - 1)
         if last >= guard:
@@ -133,8 +151,22 @@ def guard_blocks(port_range: Interval, excluded: Sequence[Interval]) -> tuple[In
     return tuple(blocks)
 
 
+def merge_intervals(intervals: Iterable[Interval]) -> tuple[Interval, ...]:
+    """Sort the intervals, drop inverted ones and join those that overlap or touch."""
+    merged: list[Interval] = []
+    for low, high in sorted(interval for interval in intervals if interval[0] <= interval[1]):
+        if merged and low <= merged[-1][1] + 1:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], high))
+        else:
+            merged.append((low, high))
+    return tuple(merged)
+
+
 def format_intervals(intervals: Sequence[Interval]) -> str:
-    return ",".join(str(low) if low == high else f"{low}-{high}" for low, high in intervals)
+    text = ",".join(str(low) if low == high else f"{low}-{high}" for low, high in intervals[:_MAX_LISTED_INTERVALS])
+    if len(intervals) > _MAX_LISTED_INTERVALS:
+        text += f" and {len(intervals) - _MAX_LISTED_INTERVALS} more"
+    return text
 
 
 @cache
@@ -144,12 +176,18 @@ def system_exclusions() -> tuple[Exclusion, ...]:
     Outgoing connections take their source port from the ephemeral range at any
     moment and know nothing about leases, so no lease is safe in there.
     """
-    if sys.platform == "linux":
+    return exclusions_for_platform(sys.platform)
+
+
+def exclusions_for_platform(platform: str) -> tuple[Exclusion, ...]:
+    # A parameter rather than sys.platform itself, so that type checkers don't
+    # skip the branches of other systems as unreachable.
+    if platform == "linux":
         return (
             ("ephemeral ports", tuple(_linux_ephemeral_ranges())),
             ("reserved ports", tuple(_linux_reserved_ports())),
         )
-    if sys.platform == "darwin" or sys.platform.startswith(_BSD_PLATFORMS):
+    if platform.startswith(_SYSCTL_PLATFORMS):
         return (("ephemeral ports", tuple(_bsd_ephemeral_ranges())),)
     # Windows doesn't report its range in a form easy to read, see the README.
     return (("ephemeral ports", (FALLBACK_EPHEMERAL_RANGE,)),)
@@ -168,7 +206,7 @@ def _linux_reserved_ports() -> list[Interval]:
     try:
         with open(_LINUX_RESERVED_FILE) as f:
             return parse_port_list(f.read())
-    except OSError:
+    except (OSError, ValueError):
         return []
 
 

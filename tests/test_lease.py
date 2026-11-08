@@ -15,7 +15,7 @@ from subprocess import PIPE, Popen
 from sys import executable, platform
 from textwrap import dedent
 
-from pytest import fixture, mark, param, raises, skip
+from pytest import mark, param, raises, skip
 
 from pytest_twinport import NoFreePortError, PortLease, _lease, lease_port
 
@@ -30,14 +30,6 @@ def has_ipv6_loopback() -> bool:
 
 
 HAS_IPV6_LOOPBACK = has_ipv6_loopback()
-
-
-@fixture
-def pair() -> tuple[int, int]:
-    """A currently free pair, to be used through a one-pair `port_range`."""
-    lease = lease_port()
-    lease.release()
-    return lease.guard_port, lease.port
 
 
 def bound_socket(family, kind, host, port, *, reuse=False) -> socket:
