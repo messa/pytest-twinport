@@ -39,11 +39,11 @@ Use `lease_port()` for any other fixture scope, or outside of fixtures. Make the
 server fixture depend on the lease, so that the server stops first:
 
 ```python
-import pytest
+from pytest import fixture
 from pytest_twinport import lease_port
 
 
-@pytest.fixture(scope="session")
+@fixture(scope="session")
 def server():
     with lease_port() as port:
         process = start_server(port=port)
