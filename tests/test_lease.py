@@ -76,6 +76,23 @@ def test_release_is_idempotent(pair):
     lease.release()
 
 
+def test_released_lease_cannot_be_used_in_with():
+    lease = lease_port()
+    lease.release()
+    with raises(RuntimeError, match=rf"PortLease\(port={lease.port}\) was already released"):
+        with lease:
+            pass
+
+
+def test_lease_cannot_be_used_in_with_twice():
+    lease = lease_port()
+    with lease:
+        pass
+    with raises(RuntimeError, match="already released"):
+        with lease:
+            pass
+
+
 def test_guard_cannot_be_taken_with_so_reuseaddr(pair):
     guard_port, _ = pair
     with lease_port(port_range=pair):

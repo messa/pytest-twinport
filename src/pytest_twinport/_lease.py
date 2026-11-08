@@ -58,7 +58,8 @@ class PortLease:
 
     Keep a reference for as long as the port is in use: a lease that gets
     garbage collected loses its guard. Used as a context manager, it yields the
-    port number and releases it on exit.
+    port number and releases it on exit. A released lease can't be entered
+    again.
     """
 
     def __init__(self, port: int, guard: socket) -> None:
@@ -74,6 +75,9 @@ class PortLease:
         self._guard.close()
 
     def __enter__(self) -> int:
+        # A closed socket reports -1. The port would come with no protection.
+        if self._guard.fileno() == -1:
+            raise RuntimeError(f"{self!r} was already released")
         return self.port
 
     def __exit__(
