@@ -5,8 +5,6 @@ normal use.
 
 ## Library
 
-- Raise an error when a released lease is used in `with`. It now returns the
-  port with no protection.
 - Add a way to use ephemeral ports on systems where that range covers nearly all
   ports, because nothing can be leased there.
 - Consider handing over the bound socket (`lease.socket`) for servers running in

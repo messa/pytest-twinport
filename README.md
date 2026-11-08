@@ -35,8 +35,8 @@ def test_cluster(twinport_factory):
     ...
 ```
 
-Use `lease_port()` for any other fixture scope, or outside of fixtures. Make the
-server fixture depend on the lease, so that the server stops first:
+Use `lease_port()` for any other fixture scope, or outside of fixtures. Stop the
+server inside the `with` block, so that it stops before the port is released:
 
 ```python
 from pytest import fixture
@@ -60,6 +60,10 @@ start_server(port=lease.port)
 ...
 lease.release()
 ```
+
+A lease garbage collected before `release()` emits a `ResourceWarning`, as a
+sign that the port was given up earlier than intended. Using a released lease in
+`with` raises `RuntimeError`.
 
 If your server can bind to port 0 and report the port it got, you don't need
 this plugin. It is meant for servers that must be told their port up front, such
@@ -237,6 +241,8 @@ These solve neighboring problems:
 
 ### Unreleased
 
+- Using a released lease in `with` raises `RuntimeError`. It used to return the
+  port with no protection.
 - The default range leaves out 30000-32767, the Kubernetes NodePorts.
 - A range without a whole pair raises `ValueError` instead of `NoFreePortError`,
   also when it comes from `TWINPORT_RANGE`.
