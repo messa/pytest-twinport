@@ -9,7 +9,9 @@ process is killed.
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterator
 from errno import EACCES, EADDRINUSE, EADDRNOTAVAIL, EAFNOSUPPORT
+from math import gcd
 from random import SystemRandom
 from socket import (
     AF_INET,
@@ -89,19 +91,39 @@ class PortLease:
 def lease_port(*, port_range: tuple[int, int] | None = None) -> PortLease:
     """Lease a port that is free for both TCP and UDP, on IPv4 and IPv6.
 
-    `port_range` is an inclusive `(low, high)` tuple. It defaults to the
-    `TWINPORT_RANGE` environment variable, then to 15000-65535. Ephemeral and
-    reserved ports are always left out.
+    `port_range` is an inclusive `(low, high)` tuple of ints, which must contain
+    at least one even port and the odd port after it. It defaults to the
+    `TWINPORT_RANGE` environment variable, then to 15000-65535 without
+    30000-32767. Ephemeral and reserved ports are always left out.
     """
     guards = candidate_guards(port_range)
     if not guards:
-        raise NoFreePortError("The port range has no pair outside the ephemeral and reserved ports.")
-    start = _rng.randrange(len(guards))
-    for guard_port in guards[start:] + guards[:start]:
-        lease = _try_lease(guard_port)
+        raise NoFreePortError(
+            f"The port range {guards.describe_range()} has no pair outside the excluded ports: "
+            f"{guards.describe_exclusions()}."
+        )
+    for index in _random_order(len(guards)):
+        lease = _try_lease(guards[index])
         if lease is not None:
             return lease
-    raise NoFreePortError(f"None of the {len(guards)} port pairs in the range could be leased.")
+    raise NoFreePortError(f"None of the {len(guards)} port pairs in {guards.describe_range()} could be leased.")
+
+
+def _random_order(count: int) -> Iterator[int]:
+    """Yield every index below `count` once, in a random order.
+
+    A random step coprime to `count` spreads the attempts over the range. A
+    linear scan would hand out the pairs right after the leased ones, and the
+    leases would pile up into runs that later scans have to walk through.
+    """
+    start = _rng.randrange(count)
+    step = 1
+    if count > 2:
+        step = _rng.randrange(1, count)
+        while gcd(step, count) != 1:
+            step = _rng.randrange(1, count)
+    for i in range(count):
+        yield (start + i * step) % count
 
 
 def _try_lease(guard_port: int) -> PortLease | None:

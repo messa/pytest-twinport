@@ -23,13 +23,12 @@ normal use.
 
 - Run the tests with `pytest-xdist` in CI, and add a test using `-n`. The README
   promises this works, but only manual runs cover it.
-- Test that ports from `ip_local_reserved_ports` are skipped.
 - Test that `with` releases the lease while a reference to it still exists.
 - Test that a missing IPv6 is tolerated.
 - Test that seeding the global random generator does not affect leases.
-- Make tests independent of `TWINPORT_RANGE` set in the environment.
-- Don't assume that ports 20000 and 21000 are outside the ephemeral range, in the
-  tests and in the default range of `scripts/stress.py`.
+- Don't assume that ports 20000 and 21000 are outside the ephemeral range in the
+  lease tests and in the default range of `scripts/stress.py`. The range tests
+  don't depend on it anymore.
 - Run mypy on the tests and scripts too.
 
 ## CI and release
