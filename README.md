@@ -239,7 +239,7 @@ These solve neighboring problems:
 
 ## Changelog
 
-### Unreleased
+### 0.2.0 (2026-11-08)
 
 - Using a released lease in `with` raises `RuntimeError`. It used to return the
   port with no protection.
