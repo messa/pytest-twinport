@@ -188,9 +188,9 @@ uv run scripts/stress.py
 
 Set the new version in `pyproject.toml`, move the changes from Unreleased in the
 [changelog](#changelog) to a new section, leave a fresh empty Unreleased section
-above it, and commit it. Publishing a GitHub
-release then runs the tests, builds the package and uploads it to PyPI. The
-release fails if its tag does not match the version:
+above it, and commit it. Publishing a GitHub release then runs the tests, builds
+the package and uploads it to PyPI. The release fails if its tag does not match
+the version:
 
 ```bash
 gh release create v0.1.0 --generate-notes
