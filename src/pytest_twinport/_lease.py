@@ -64,7 +64,7 @@ class PortLease:
 
     def __init__(self, port: int, guard: socket) -> None:
         self.port = port
-        self._guard = guard
+        self._guard: socket | None = guard
 
     @property
     def guard_port(self) -> int:
@@ -72,11 +72,13 @@ class PortLease:
 
     def release(self) -> None:
         """Give the port back. Stop anything using it first."""
-        self._guard.close()
+        if self._guard is not None:
+            self._guard.close()
+            self._guard = None
 
     def __enter__(self) -> int:
-        # A closed socket reports -1. The port would come with no protection.
-        if self._guard.fileno() == -1:
+        # The port would come with no protection.
+        if self._guard is None:
             raise RuntimeError(f"{self!r} was already released")
         return self.port
 
