@@ -25,7 +25,7 @@ from socket import (
 )
 from types import TracebackType
 
-from ._ranges import candidate_guards
+from ._ranges import Candidates, candidate_guards
 
 
 if sys.platform == "win32":
@@ -98,6 +98,7 @@ def lease_port(*, port_range: tuple[int, int] | None = None) -> PortLease:
     out.
     """
     guards = candidate_guards(port_range)
+    assert isinstance(guards, Candidates)
     if not guards:
         raise NoFreePortError(
             f"The port range {guards.describe_range()} has no pair outside the excluded ports: "
